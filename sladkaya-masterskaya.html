@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍰 Сладкая мастерская</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #FFD1DC, #B5EAD7, #FFF5BA);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .card {
+    background: #fff; border-radius: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    padding: 30px; max-width: 500px; width: 100%; text-align: center;
+  }
+  h1 { color: #ff7aa2; font-size: 28px; }
+  .chef { font-size: 60px; }
+  .question { font-size: 22px; margin: 20px 0; color: #444; }
+  .options button {
+    display: block; width: 100%; margin: 10px 0; padding: 16px;
+    font-size: 20px; border: none; border-radius: 20px;
+    background: #B5EAD7; cursor: pointer; transition: .2s; font-family: inherit;
+  }
+  .options button:hover { transform: scale(1.05); background: #9be0c4; }
+  .dessert { font-size: 40px; margin: 20px 0; min-height: 50px; }
+  .feedback { font-size: 20px; margin: 15px 0; min-height: 28px; color: #ff7aa2; }
+  .start-btn, .again-btn {
+    padding: 16px 30px; font-size: 22px; border: none; border-radius: 25px;
+    background: #ff9ec3; color: #fff; cursor: pointer; font-family: inherit; margin-top: 15px;
+  }
+  .progress { font-size: 18px; color: #888; }
+  .sound-btn {
+    background: #FFF5BA; border: none; border-radius: 15px; padding: 8px 14px;
+    font-size: 18px; cursor: pointer; margin-top: 10px; font-family: inherit;
+  }
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .pop { display:inline-block; animation: pop .5s ease; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="chef">👨‍🍳</div>
+  <h1>Сладкая мастерская</h1>
+  <div id="screen"></div>
+</div>
+
+<script>
+// ====== БАЗА ДАННЫХ (встроенный JSON) ======
+const DATA = {
+  desserts: [
+    { name: "Радужный торт 🍰" },
+    { name: "Волшебное мороженое 🍦" },
+    { name: "Весёлый кекс 🧁" },
+    { name: "Фруктовый коктейль 🥤" },
+    { name: "Сладкие вафли 🧇" }
+  ],
+  praise: [
+    "Ура! Верно! Кладём ингредиент!",
+    "Ты умница! Дзинь-дзинь!",
+    "Отлично! Как вкусно получается!",
+    "Правильно! Как красиво!",
+    "Вот это да! Ты волшебник!"
+  ],
+  hints: [
+    "Почти! Попробуй ещё разок",
+    "Ты близко! Подумай ещё чуть-чуть",
+    "Не переживай, попробуем вместе"
+  ],
+  questions: [
+    {q:"Кто спит зимой в берлоге?",o:["Медведь","Заяц","Лиса"],c:"Медведь",i:"🍓"},
+    {q:"Кто даёт нам молоко?",o:["Корова","Курица","Рыбка"],c:"Корова",i:"🍫"},
+    {q:"Что растёт под землёй?",o:["Морковка","Яблоко","Груша"],c:"Морковка",i:"🥝"},
+    {q:"Кто говорит «Мяу»?",o:["Кошка","Собака","Утка"],c:"Кошка",i:"🍯"},
+    {q:"У кого иголки на спинке?",o:["Ёжик","Заяц","Волк"],c:"Ёжик",i:"🍒"},
+    {q:"Какого цвета солнышко?",o:["Жёлтое","Синее","Чёрное"],c:"Жёлтое",i:"🍦"},
+    {q:"Какого цвета трава?",o:["Зелёная","Красная","Белая"],c:"Зелёная",i:"🫐"},
+    {q:"Сколько лап у котика?",o:["4","2","6"],c:"4",i:"🥥"},
+    {q:"На что похоже колесо?",o:["Круг","Квадрат","Треугольник"],c:"Круг",i:"🧁"},
+    {q:"Сколько будет 1 плюс 1?",o:["2","3","1"],c:"2",i:"🍌"},
+    {q:"Что нужно сказать за подарок?",o:["Спасибо","Пока","Ничего"],c:"Спасибо",i:"🌈"},
+    {q:"Кто тянул репку первым?",o:["Дедка","Мышка","Внучка"],c:"Дедка",i:"🍓"},
+    {q:"Что кислое?",o:["Лимон","Конфета","Мёд"],c:"Лимон",i:"🍫"},
+    {q:"Что холодное?",o:["Мороженое","Чай","Суп"],c:"Мороженое",i:"🥝"},
+    {q:"Где растут яблоки?",o:["На дереве","В море","Под землёй"],c:"На дереве",i:"🍎"},
+    {q:"У кого длинная шея?",o:["Жираф","Кот","Ёжик"],c:"Жираф",i:"🍯"},
+    {q:"Кто царь зверей?",o:["Лев","Заяц","Мышь"],c:"Лев",i:"🍒"},
+    {q:"Какая птица не летает?",o:["Пингвин","Воробей","Ласточка"],c:"Пингвин",i:"🫐"},
+    {q:"Кто превращается из гусеницы?",o:["Бабочка","Пчела","Муха"],c:"Бабочка",i:"🌈"},
+    {q:"Сколько дней в неделе?",o:["7","5","10"],c:"7",i:"🧁"},
+    {q:"Какая фигура у крыши домика?",o:["Треугольник","Круг","Овал"],c:"Треугольник",i:"🍦"},
+    {q:"Сколько пальцев на руке?",o:["5","4","6"],c:"5",i:"🥭"},
+    {q:"Кто помогал Золушке?",o:["Фея","Дракон","Робот"],c:"Фея",i:"🍑"},
+    {q:"Как мычит корова?",o:["Му","Гав","Кря"],c:"Му",i:"🥤"},
+    {q:"С какой буквы слово Арбуз?",o:["А","Б","О"],c:"А",i:"🍓"},
+    {q:"Какая планета наш дом?",o:["Земля","Марс","Луна"],c:"Земля",i:"🍫"},
+    {q:"Какое насекомое делает мёд?",o:["Пчела","Муравей","Комар"],c:"Пчела",i:"🍯"},
+    {q:"Сколько ног у паука?",o:["8","6","4"],c:"8",i:"🥝"},
+    {q:"Сколько будет 3 плюс 2?",o:["5","4","6"],c:"5",i:"🍒"},
+    {q:"Из чего состоит радуга?",o:["Из цветов","Из воды","Из облаков"],c:"Из цветов",i:"🌈"},
+    {q:"Чем мы слышим?",o:["Ушами","Глазами","Руками"],c:"Ушами",i:"🫐"},
+    {q:"Какое время года тёплое?",o:["Лето","Зима","Осень"],c:"Лето",i:"🥥"}
+  ]
+};
+
+// ====== ОЗВУЧКА (голос браузера) ======
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ru-RU';
+  u.rate = 0.9;   // помедленнее для малышей
+  u.pitch = 1.2;  // повыше — по-доброму
+  window.speechSynthesis.speak(u);
+}
+
+// ====== ЗВУКИ (генерируем через Web Audio) ======
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, duration, type='sine'){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+function soundCorrect(){ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); } // "дзинь!"
+function soundWrong(){ playTone(200,0.3,'triangle'); } // мягкое "буу"
+function soundWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180)); } // фанфары
+
+// ====== ЛОГИКА ИГРЫ ======
+let questions = [], step = 0, collected = [], dessertName = "";
+const TOTAL = 6;
+const screen = document.getElementById('screen');
+
+function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function startGame(){
+  audioCtx.resume(); // разблокировать звук
+  questions = shuffle(DATA.questions).slice(0, TOTAL);
+  step = 0; collected = [];
+  dessertName = pick(DATA.desserts).name;
+  showQuestion();
+}
+
+function showQuestion(){
+  const item = questions[step];
+  let optionsHtml = shuffle(item.o).map(opt =>
+    `<button onclick="answer('${opt.replace(/'/g,"")}')">${opt}</button>`
+  ).join('');
+
+  screen.innerHTML = `
+    <div class="progress">Готовим: ${dessertName} (${step+1} из ${TOTAL})</div>
+    <div class="dessert">${collected.join(' ') || '🍽️'}</div>
+    <div class="question">${item.q}</div>
+    <div class="options">${optionsHtml}</div>
+    <button class="sound-btn" onclick="speak('${item.q}')">🔊 Повторить вопрос</button>
+    <div class="feedback" id="fb"></div>
+  `;
+  speak(item.q); // читаем вопрос вслух
+}
+
+function answer(chosen){
+  const item = questions[step];
+  const fb = document.getElementById('fb');
+  if(chosen === item.c){
+    collected.push(item.i);
+    soundCorrect();
+    const praise = pick(DATA.praise);
+    fb.innerHTML = `<span class="pop">${praise} ${item.i}</span>`;
+    speak(praise);
+    step++;
+    setTimeout(()=> { step < TOTAL ? showQuestion() : showFinal(); }, 1600);
+  } else {
+    soundWrong();
+    const hint = pick(DATA.hints);
+    fb.textContent = hint;
+    speak(hint);
+  }
+}
+
+function showFinal(){
+  soundWin();
+  screen.innerHTML = `
+    <div class="progress">Твой десерт готов! 🎉</div>
+    <div class="dessert pop" style="font-size:50px">${collected.join(' ')}</div>
+    <h1>${dessertName}</h1>
+    <div class="question">Ты настоящий маленький кондитер! 👏</div>
+    <button class="again-btn" onclick="startGame()">Приготовить ещё! 🍰</button>
+  `;
+  speak(`Ура! Твой десерт готов! ${dessertName.replace(/[^\wа-яё ]/gi,'')}. Ты настоящий маленький кондитер!`);
+}
+
+// ====== СТАРТ ======
+screen.innerHTML = `
+  <div class="question">Привет, маленький кондитер!<br>Давай испечём волшебный десерт? 🍓</div>
+  <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>
+`;
+</script>
+</body>
+</html>
