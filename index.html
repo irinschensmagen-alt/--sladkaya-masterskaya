@@ -6,8 +6,7 @@
 <title>🍰 Сладкая мастерская</title>
 <style>
   body {
-    margin: 0;
-    font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
+    margin: 0; font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #FFD1DC, #B5EAD7, #FFF5BA);
     display: flex; justify-content: center; align-items: center;
     min-height: 100vh; padding: 20px;
@@ -15,9 +14,9 @@
   .card {
     background: #fff; border-radius: 30px;
     box-shadow: 0 10px 30px rgba(0,0,0,.15);
-    padding: 30px; max-width: 500px; width: 100%; text-align: center;
+    padding: 30px; max-width: 520px; width: 100%; text-align: center;
   }
-  h1 { color: #ff7aa2; font-size: 28px; }
+  h1 { color: #ff7aa2; font-size: 28px; margin: 10px 0; }
   .chef { font-size: 60px; }
   .question { font-size: 22px; margin: 20px 0; color: #444; }
   .options button {
@@ -26,17 +25,39 @@
     background: #B5EAD7; cursor: pointer; transition: .2s; font-family: inherit;
   }
   .options button:hover { transform: scale(1.05); background: #9be0c4; }
-  .dessert { font-size: 40px; margin: 20px 0; min-height: 50px; }
   .feedback { font-size: 20px; margin: 15px 0; min-height: 28px; color: #ff7aa2; }
-  .start-btn, .again-btn {
-    padding: 16px 30px; font-size: 22px; border: none; border-radius: 25px;
-    background: #ff9ec3; color: #fff; cursor: pointer; font-family: inherit; margin-top: 15px;
-  }
   .progress { font-size: 18px; color: #888; }
-  .sound-btn {
-    background: #FFF5BA; border: none; border-radius: 15px; padding: 8px 14px;
-    font-size: 18px; cursor: pointer; margin-top: 10px; font-family: inherit;
+  .start-btn, .again-btn, .sound-btn {
+    padding: 14px 26px; font-size: 20px; border: none; border-radius: 25px;
+    background: #ff9ec3; color: #fff; cursor: pointer; font-family: inherit; margin-top: 12px;
   }
+  .sound-btn { background: #FFF5BA; color: #a67c00; font-size: 18px; padding: 8px 14px; }
+
+  /* ---- Сборка десерта ---- */
+  .plate {
+    width: 220px; height: 220px; margin: 15px auto; border-radius: 50%;
+    background: radial-gradient(circle, #fff 60%, #eee 100%);
+    border: 6px dashed #ffb6cf; display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: center; gap: 4px; padding: 10px;
+    box-shadow: inset 0 4px 12px rgba(0,0,0,.08);
+    transition: .2s;
+  }
+  .plate.over { background: #FFF5BA; transform: scale(1.05); }
+  .plate span { font-size: 34px; animation: pop .5s ease; }
+  .tray {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+    margin: 15px 0; min-height: 60px;
+  }
+  .ingredient {
+    font-size: 42px; cursor: grab; user-select: none;
+    background: #fdf0f5; border-radius: 18px; padding: 6px 10px;
+    transition: .15s; box-shadow: 0 3px 6px rgba(0,0,0,.1);
+    animation: pop .4s ease;
+  }
+  .ingredient:hover { transform: scale(1.2) rotate(-5deg); }
+  .ingredient:active { cursor: grabbing; }
+  .hint-small { font-size: 15px; color: #999; margin-top: 8px; }
+
   @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
   .pop { display:inline-block; animation: pop .5s ease; }
 </style>
@@ -49,27 +70,11 @@
 </div>
 
 <script>
-// ====== БАЗА ДАННЫХ (встроенный JSON) ======
+// ====== БАЗА ДАННЫХ ======
 const DATA = {
-  desserts: [
-    { name: "Радужный торт 🍰" },
-    { name: "Волшебное мороженое 🍦" },
-    { name: "Весёлый кекс 🧁" },
-    { name: "Фруктовый коктейль 🥤" },
-    { name: "Сладкие вафли 🧇" }
-  ],
-  praise: [
-    "Ура! Верно! Кладём ингредиент!",
-    "Ты умница! Дзинь-дзинь!",
-    "Отлично! Как вкусно получается!",
-    "Правильно! Как красиво!",
-    "Вот это да! Ты волшебник!"
-  ],
-  hints: [
-    "Почти! Попробуй ещё разок",
-    "Ты близко! Подумай ещё чуть-чуть",
-    "Не переживай, попробуем вместе"
-  ],
+  desserts: ["Радужный торт 🍰","Волшебное мороженое 🍦","Весёлый кекс 🧁","Фруктовый коктейль 🥤","Сладкие вафли 🧇"],
+  praise: ["Ура! Верно! Держи ингредиент!","Ты умница! Дзинь-дзинь!","Отлично! Как вкусно!","Правильно! Как красиво!","Вот это да! Ты волшебник!"],
+  hints: ["Почти! Попробуй ещё разок","Ты близко! Подумай ещё чуть-чуть","Не переживай, попробуем вместе"],
   questions: [
     {q:"Кто спит зимой в берлоге?",o:["Медведь","Заяц","Лиса"],c:"Медведь",i:"🍓"},
     {q:"Кто даёт нам молоко?",o:["Корова","Курица","Рыбка"],c:"Корова",i:"🍫"},
@@ -106,101 +111,61 @@ const DATA = {
   ]
 };
 
-// ====== ОЗВУЧКА (голос браузера) ======
-function speak(text){
+// ====== ОЗВУЧКА: голоса «девочки» и «мальчика» поочерёдно ======
+let voices = [];
+let girlVoice = null, boyVoice = null;
+let speakerTurn = 0; // 0 = девочка, 1 = мальчик
+
+function loadVoices(){
+  voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('ru'));
+  // пытаемся найти "детские" или разные голоса
+  girlVoice = voices.find(v => /child|kid|girl|дет|Alena|Alyona|Milena|female|женск/i.test(v.name)) || voices[0];
+  boyVoice  = voices.find(v => v !== girlVoice) || voices[0];
+}
+if('speechSynthesis' in window){
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function speak(text, keepTurn=false){
   if(!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'ru-RU';
-  u.rate = 0.9;   // помедленнее для малышей
-  u.pitch = 1.2;  // повыше — по-доброму
+  u.rate = 0.9;
+  if(speakerTurn === 0){          // ДЕВОЧКА — очень высокий, звонкий
+    u.voice = girlVoice; u.pitch = 2.0; u.rate = 0.95;
+  } else {                        // МАЛЬЧИК — высокий, но бодрый
+    u.voice = boyVoice;  u.pitch = 1.7; u.rate = 1.0;
+  }
   window.speechSynthesis.speak(u);
+  if(!keepTurn) speakerTurn = 1 - speakerTurn; // чередуем голоса
 }
 
-// ====== ЗВУКИ (генерируем через Web Audio) ======
+// ====== ЗВУКИ ======
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playTone(freq, duration, type='sine'){
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = type; osc.frequency.value = freq;
-  osc.connect(gain); gain.connect(audioCtx.destination);
-  gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-  osc.start(); osc.stop(audioCtx.currentTime + duration);
+function playTone(freq, dur, type='sine'){
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.2,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+  o.start(); o.stop(audioCtx.currentTime+dur);
 }
-function soundCorrect(){ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); } // "дзинь!"
-function soundWrong(){ playTone(200,0.3,'triangle'); } // мягкое "буу"
-function soundWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180)); } // фанфары
+const soundCorrect=()=>{ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); };
+const soundWrong=()=> playTone(200,0.3,'triangle');
+const soundWin=()=> [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180));
+const soundDrop=()=>{ playTone(660,0.1); setTimeout(()=>playTone(990,0.15),80); };
 
 // ====== ЛОГИКА ИГРЫ ======
-let questions = [], step = 0, collected = [], dessertName = "";
+let questions=[], step=0, earned=[], dessertName="";
 const TOTAL = 6;
 const screen = document.getElementById('screen');
-
-function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+const shuffle = a => [...a].sort(()=>Math.random()-0.5);
+const pick = a => a[Math.floor(Math.random()*a.length)];
 
 function startGame(){
-  audioCtx.resume(); // разблокировать звук
-  questions = shuffle(DATA.questions).slice(0, TOTAL);
-  step = 0; collected = [];
-  dessertName = pick(DATA.desserts).name;
-  showQuestion();
-}
-
-function showQuestion(){
-  const item = questions[step];
-  let optionsHtml = shuffle(item.o).map(opt =>
-    `<button onclick="answer('${opt.replace(/'/g,"")}')">${opt}</button>`
-  ).join('');
-
-  screen.innerHTML = `
-    <div class="progress">Готовим: ${dessertName} (${step+1} из ${TOTAL})</div>
-    <div class="dessert">${collected.join(' ') || '🍽️'}</div>
-    <div class="question">${item.q}</div>
-    <div class="options">${optionsHtml}</div>
-    <button class="sound-btn" onclick="speak('${item.q}')">🔊 Повторить вопрос</button>
-    <div class="feedback" id="fb"></div>
-  `;
-  speak(item.q); // читаем вопрос вслух
-}
-
-function answer(chosen){
-  const item = questions[step];
-  const fb = document.getElementById('fb');
-  if(chosen === item.c){
-    collected.push(item.i);
-    soundCorrect();
-    const praise = pick(DATA.praise);
-    fb.innerHTML = `<span class="pop">${praise} ${item.i}</span>`;
-    speak(praise);
-    step++;
-    setTimeout(()=> { step < TOTAL ? showQuestion() : showFinal(); }, 1600);
-  } else {
-    soundWrong();
-    const hint = pick(DATA.hints);
-    fb.textContent = hint;
-    speak(hint);
-  }
-}
-
-function showFinal(){
-  soundWin();
-  screen.innerHTML = `
-    <div class="progress">Твой десерт готов! 🎉</div>
-    <div class="dessert pop" style="font-size:50px">${collected.join(' ')}</div>
-    <h1>${dessertName}</h1>
-    <div class="question">Ты настоящий маленький кондитер! 👏</div>
-    <button class="again-btn" onclick="startGame()">Приготовить ещё! 🍰</button>
-  `;
-  speak(`Ура! Твой десерт готов! ${dessertName.replace(/[^\wа-яё ]/gi,'')}. Ты настоящий маленький кондитер!`);
-}
-
-// ====== СТАРТ ======
-screen.innerHTML = `
-  <div class="question">Привет, маленький кондитер!<br>Давай испечём волшебный десерт? 🍓</div>
-  <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>
-`;
-</script>
-</body>
-</html>
+  audioCtx.resume();
+  questions = shuffle(DATA.questions).slice(0,TOTAL);
+  step=0; earned=[]; speakerTurn=0;
+  dessertName = pick(DATA.desserts);
+  showQuest
