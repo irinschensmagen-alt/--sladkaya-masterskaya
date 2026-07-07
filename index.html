@@ -5,6 +5,717 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🍰 Сладкая мастерская</title>
 <style>
+  body {
+    margin: 0; font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #FFD1DC, #B5EAD7, #FFF5BA);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .card {
+    background: #fff; border-radius: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    padding: 30px; max-width: 520px; width: 100%; text-align: center;
+  }
+  h1 { color: #ff7aa2; font-size: 28px; margin: 10px 0; }
+  .chef { font-size: 60px; }
+  .question { font-size: 22px; margin: 20px 0; color: #444; }
+  .options button {
+    display: block; width: 100%; margin: 10px 0; padding: 16px;
+    font-size: 20px; border: none; border-radius: 20px;
+    background: #B5EAD7; cursor: pointer; transition: .2s; font-family: inherit;
+  }
+  .options button:hover { transform: scale(1.05); background: #9be0c4; }
+  .feedback { font-size: 20px; margin: 15px 0; min-height: 28px; color: #ff7aa2; }
+  .progress { font-size: 18px; color: #888; }
+  .start-btn, .again-btn, .sound-btn {
+    padding: 14px 26px; font-size: 20px; border: none; border-radius: 25px;
+    background: #ff9ec3; color: #fff; cursor: pointer; font-family: inherit; margin-top: 12px;
+  }
+  .sound-btn { background: #FFF5BA; color: #a67c00; font-size: 18px; padding: 8px 14px; }
+
+  /* ---- Сборка десерта ---- */
+  .plate {
+    width: 220px; height: 220px; margin: 15px auto; border-radius: 50%;
+    background: radial-gradient(circle, #fff 60%, #eee 100%);
+    border: 6px dashed #ffb6cf; display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: center; gap: 4px; padding: 10px;
+    box-shadow: inset 0 4px 12px rgba(0,0,0,.08);
+    transition: .2s;
+  }
+  .plate.over { background: #FFF5BA; transform: scale(1.05); }
+  .plate span { font-size: 34px; animation: pop .5s ease; }
+  .tray {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+    margin: 15px 0; min-height: 60px;
+  }
+  .ingredient {
+    font-size: 42px; cursor: grab; user-select: none;
+    background: #fdf0f5; border-radius: 18px; padding: 6px 10px;
+    transition: .15s; box-shadow: 0 3px 6px rgba(0,0,0,.1);
+    animation: pop .4s ease;
+  }
+  .ingredient:hover { transform: scale(1.2) rotate(-5deg); }
+  .ingredient:active { cursor: grabbing; }
+  .hint-small { font-size: 15px; color: #999; margin-top: 8px; }
+
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .pop { display:inline-block; animation: pop .5s ease; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="chef">👨‍🍳</div>
+  <h1>Сладкая мастерская</h1>
+  <div id="screen"></div>
+</div>
+
+<script>
+// ====== БАЗА ДАННЫХ ======
+const DATA = {
+  desserts: ["Радужный торт 🍰","Волшебное мороженое 🍦","Весёлый кекс 🧁","Фруктовый коктейль 🥤","Сладкие вафли 🧇"],
+  praise: ["Ура! Верно! Держи ингредиент!","Ты умница! Дзинь-дзинь!","Отлично! Как вкусно!","Правильно! Как красиво!","Вот это да! Ты волшебник!"],
+  hints: ["Почти! Попробуй ещё разок","Ты близко! Подумай ещё чуть-чуть","Не переживай, попробуем вместе"],
+  questions: [
+    {q:"Кто спит зимой в берлоге?",o:["Медведь","Заяц","Лиса"],c:"Медведь",i:"🍓"},
+    {q:"Кто даёт нам молоко?",o:["Корова","Курица","Рыбка"],c:"Корова",i:"🍫"},
+    {q:"Что растёт под землёй?",o:["Морковка","Яблоко","Груша"],c:"Морковка",i:"🥝"},
+    {q:"Кто говорит «Мяу»?",o:["Кошка","Собака","Утка"],c:"Кошка",i:"🍯"},
+    {q:"У кого иголки на спинке?",o:["Ёжик","Заяц","Волк"],c:"Ёжик",i:"🍒"},
+    {q:"Какого цвета солнышко?",o:["Жёлтое","Синее","Чёрное"],c:"Жёлтое",i:"🍦"},
+    {q:"Какого цвета трава?",o:["Зелёная","Красная","Белая"],c:"Зелёная",i:"🫐"},
+    {q:"Сколько лап у котика?",o:["4","2","6"],c:"4",i:"🥥"},
+    {q:"На что похоже колесо?",o:["Круг","Квадрат","Треугольник"],c:"Круг",i:"🧁"},
+    {q:"Сколько будет 1 плюс 1?",o:["2","3","1"],c:"2",i:"🍌"},
+    {q:"Что нужно сказать за подарок?",o:["Спасибо","Пока","Ничего"],c:"Спасибо",i:"🌈"},
+    {q:"Кто тянул репку первым?",o:["Дедка","Мышка","Внучка"],c:"Дедка",i:"🍓"},
+    {q:"Что кислое?",o:["Лимон","Конфета","Мёд"],c:"Лимон",i:"🍫"},
+    {q:"Что холодное?",o:["Мороженое","Чай","Суп"],c:"Мороженое",i:"🥝"},
+    {q:"Где растут яблоки?",o:["На дереве","В море","Под землёй"],c:"На дереве",i:"🍎"},
+    {q:"У кого длинная шея?",o:["Жираф","Кот","Ёжик"],c:"Жираф",i:"🍯"},
+    {q:"Кто царь зверей?",o:["Лев","Заяц","Мышь"],c:"Лев",i:"🍒"},
+    {q:"Какая птица не летает?",o:["Пингвин","Воробей","Ласточка"],c:"Пингвин",i:"🫐"},
+    {q:"Кто превращается из гусеницы?",o:["Бабочка","Пчела","Муха"],c:"Бабочка",i:"🌈"},
+    {q:"Сколько дней в неделе?",o:["7","5","10"],c:"7",i:"🧁"},
+    {q:"Какая фигура у крыши домика?",o:["Треугольник","Круг","Овал"],c:"Треугольник",i:"🍦"},
+    {q:"Сколько пальцев на руке?",o:["5","4","6"],c:"5",i:"🥭"},
+    {q:"Кто помогал Золушке?",o:["Фея","Дракон","Робот"],c:"Фея",i:"🍑"},
+    {q:"Как мычит корова?",o:["Му","Гав","Кря"],c:"Му",i:"🥤"},
+    {q:"С какой буквы слово Арбуз?",o:["А","Б","О"],c:"А",i:"🍓"},
+    {q:"Какая планета наш дом?",o:["Земля","Марс","Луна"],c:"Земля",i:"🍫"},
+    {q:"Какое насекомое делает мёд?",o:["Пчела","Муравей","Комар"],c:"Пчела",i:"🍯"},
+    {q:"Сколько ног у паука?",o:["8","6","4"],c:"8",i:"🥝"},
+    {q:"Сколько будет 3 плюс 2?",o:["5","4","6"],c:"5",i:"🍒"},
+    {q:"Из чего состоит радуга?",o:["Из цветов","Из воды","Из облаков"],c:"Из цветов",i:"🌈"},
+    {q:"Чем мы слышим?",o:["Ушами","Глазами","Руками"],c:"Ушами",i:"🫐"},
+    {q:"Какое время года тёплое?",o:["Лето","Зима","Осень"],c:"Лето",i:"🥥"}
+  ]
+};
+
+// ====== ОЗВУЧКА: голоса «девочки» и «мальчика» поочерёдно ======
+let voices = [];
+let girlVoice = null, boyVoice = null;
+let speakerTurn = 0; // 0 = девочка, 1 = мальчик
+
+function loadVoices(){
+  voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('ru'));
+  // пытаемся найти "детские" или разные голоса
+  girlVoice = voices.find(v => /child|kid|girl|дет|Alena|Alyona|Milena|female|женск/i.test(v.name)) || voices[0];
+  boyVoice  = voices.find(v => v !== girlVoice) || voices[0];
+}
+if('speechSynthesis' in window){
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function speak(text, keepTurn=false){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ru-RU';
+  u.rate = 0.9;
+  if(speakerTurn === 0){          // ДЕВОЧКА — очень высокий, звонкий
+    u.voice = girlVoice; u.pitch = 2.0; u.rate = 0.95;
+  } else {                        // МАЛЬЧИК — высокий, но бодрый
+    u.voice = boyVoice;  u.pitch = 1.7; u.rate = 1.0;
+  }
+  window.speechSynthesis.speak(u);
+  if(!keepTurn) speakerTurn = 1 - speakerTurn; // чередуем голоса
+}
+
+// ====== ЗВУКИ ======
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, dur, type='sine'){
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.2,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+  o.start(); o.stop(audioCtx.currentTime+dur);
+}
+const soundCorrect=()=>{ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); };
+const soundWrong=()=> playTone(200,0.3,'triangle');
+const soundWin=()=> [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180));
+const soundDrop=()=>{ playTone(660,0.1); setTimeout(()=>playTone(990,0.15),80); };
+
+// ====== ЛОГИКА ИГРЫ ======
+let questions=[], step=0, earned=[], dessertName="";
+const TOTAL = 6;
+const screen = document.getElementById('screen');
+const shuffle = a => [...a].sort(()=>Math.random()-0.5);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+function startGame(){
+  audioCtx.resume();
+  questions = shuffle(DATA.questions).slice(0,TOTAL);
+  step=0; earned=[]; speakerTurn=0;
+  dessertName = pick(DATA.desserts);
+  showQuestion();
+}
+
+function showQuestion(){
+  const item = questions[step];
+  const optionsHtml = shuffle(item.o).map(opt =>
+    `<button onclick="answer('${opt.replace(/'/g,"")}')">${opt}</button>`).join('');
+  screen.innerHTML = `
+    <div class="progress">Собираем ингредиенты (${step+1} из ${TOTAL})</div>
+    <div class="question">${item.q}</div>
+    <div class="options">${optionsHtml}</div>
+    <button class="sound-btn" onclick="speak('${item.q}', true)">🔊 Повторить</button>
+    <div class="feedback" id="fb"></div>`;
+  speak(item.q);
+}
+
+function answer(chosen){
+  const item = questions[step];
+  const fb = document.getElementById('fb');
+  if(chosen === item.c){
+    soundCorrect();
+    earned.push(item.i);
+    const p = pick(DATA.praise);
+    fb.innerHTML = `<span class="pop">${p} ${item.i}</span>`;
+    speak(p);
+    step++;
+    setTimeout(()=> step<TOTAL ? showQuestion() : showKitchen(), 1500);
+  } else {
+    soundWrong();
+    const h = pick(DATA.hints);
+    fb.textContent = h; speak(h);
+  }
+}
+
+// ====== КУХНЯ: собираем десерт руками ======
+function showKitchen(){
+  const trayHtml = earned.map((ing,idx) =>
+    `<div class="ingredient" draggable="true" data-ing="${ing}" data-idx="${idx}"
+       onclick="tapAdd(this)"
+       ondragstart="dragStart(event,'${ing}',${idx})">${ing}</div>`).join('');
+  screen.innerHTML = `
+    <div class="progress">Ура! Ты собрал(а) все ингредиенты! 🎉</div>
+    <h1>Собери свой десерт сам! 👐</h1>
+    <div class="plate" id="plate"
+         ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropIt(event)">
+    </div>
+    <div class="hint-small">Перетащи ингредиенты на тарелку 👆<br>(или просто нажми на них пальчиком)</div>
+    <div class="tray" id="tray">${trayHtml}</div>
+    <button class="again-btn" id="doneBtn" onclick="finishDessert()">Мой десерт готов! ✨</button>`;
+  speak("Ура! Ты собрал все ингредиенты! Теперь собери свой десерт сам! Перетащи их на тарелку!");
+}
+
+let dragged = null;
+function dragStart(e, ing, idx){ dragged = {el: e.target, ing, idx}; e.dataTransfer.effectAllowed='move'; }
+function dragOver(e){ e.preventDefault(); document.getElementById('plate').classList.add('over'); }
+function dragLeave(e){ document.getElementById('plate').classList.remove('over'); }
+function dropIt(e){
+  e.preventDefault();
+  document.getElementById('plate').classList.remove('over');
+  if(dragged){ placeOnPlate(dragged.el, dragged.ing); dragged=null; }
+}
+// нажатие пальцем/мышью — тоже кладёт на тарелку
+function tapAdd(el){ placeOnPlate(el, el.dataset.ing); }
+
+function placeOnPlate(el, ing){
+  const plate = document.getElementById('plate');
+  const s = document.createElement('span');
+  s.textContent = ing;
+  plate.appendChild(s);
+  el.remove();
+  soundDrop();
+  speak("М-м, вкусно!", true);
+}
+
+function finishDessert(){
+  const plate = document.getElementById('plate');
+  const built = plate.querySelectorAll('span').length;
+  const built_ings = [...plate.querySelectorAll('span')].map(s=>s.textContent).join(' ');
+  if(built === 0){
+    speak("Положи хоть один ингредиент на тарелку!");
+    document.getElementById('plate').classList.add('over');
+    setTimeout(()=>document.getElementById('plate').classList.remove('over'),400);
+    return;
+  }
+  soundWin();
+  screen.innerHTML = `
+    <div class="progress">Твой десерт готов! 🎉</div>
+    <div class="plate" style="border-style:solid; border-color:#ffd166;">
+      ${[...plate.querySelectorAll('span')].map(s=>`<span>${s.textContent}</span>`).join('')}
+    </div>
+    <h1>${dessertName}</h1>
+    <div class="question">Ты сам(а) приготовил(а) вкусный десерт!<br>Настоящий маленький кондитер! 👏</div>
+    <button class="again-btn" onclick="startGame()">Играть ещё! 🍰</button>`;
+  speak(`Ух ты! Какой красивый десерт ты сделал сам! Ты настоящий маленький кондитер!`);
+}
+
+// ====== СТАРТ ======
+screen.innerHTML = `
+  <div class="question">Привет, маленький кондитер!<br>Отвечай на вопросы, получай ингредиенты<br>и собери свой десерт сам! 🍓👐</div>
+  <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>`;
+</script>
+</body>
+</html>
+🆕 Что изменилось
+👧👦 1) Два «детских» голоса поочерёдно
+Голоса чередуются после каждой фразы: сказала «девочка» → отвечает «мальчик»
+Высота голоса поднята до pitch 2.0 («девочка») и 1.7 («мальчик») — звучит по-детски звонко
+Код сам ищет в системе более «Отличные пожелания! 🎉 Давай честно разберу оба, чтобы игра получилась именно такой, как ты хочешь.
+🎙️ Про пожелание №1 — детские голоса (мальчик и девочка)
+Здесь важно быть честным:
+
+Голос браузера не умеет звучать как настоящий ребёнок 😔 — он использует только те голоса, что встроены в систему (обычно взрослые «диктор» и «дикторша»). Настоящий детский голос можно получить только двумя способами:
+
+Способ	Как	Сложность
+🎧 Записать реальные голоса детей	Записать мальчика и девочку, читающих фразы, сохранить как аудиофайлы	Нужны записи
+🤖 Нейросеть-озвучка	Через платные сервисы (ElevenLabs и др.)	Сложно, платно
+Что я могу сделать прямо сейчас (бесплатно и сразу):
+
+Настроить два разных голоса — повыше (условно «девочка») и пониже (условно «мальчик»), которые чередуются 👧👦
+Сделать голоса тоньше и веселее через настройку pitch, чтобы звучало «по-детски»
+Это не идеально, но максимально близко без записей. А позже, если запишешь настоящие детские голоса — я покажу, как их вставить! 🙂
+
+🖐️ Про пожелание №2 — собирать десерт своими руками — сделаю полностью! ✨
+Это отличная идея! Теперь будет так:
+
+За правильный ответ ингредиент падает в «кладовку» 🧺
+В конце игрок сам перетаскивает ингредиенты на тарелку 🍽️
+Десерт собирается руками ребёнка, а не автоматически!
+Вот обновлённая игра. Замени содержимое index.html на этот код:
+
+html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍰 Сладкая мастерская</title>
+<style>
+  body { margin:0; font-family:'Comic Sans MS','Segoe UI',sans-serif;
+    background:linear-gradient(135deg,#FFD1DC,#B5EAD7,#FFF5BA);
+    display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+  .card { background:#fff; border-radius:30px; box-shadow:0 10px 30px rgba(0,0,0,.15);
+    padding:30px; max-width:560px; width:100%; text-align:center; }
+  h1 { color:#ff7aa2; font-size:28px; }
+  .chef { font-size:60px; }
+  .question { font-size:22px; margin:20px 0; color:#444; }
+  .options button { display:block; width:100%; margin:10px 0; padding:16px; font-size:20px;
+    border:none; border-radius:20px; background:#B5EAD7; cursor:pointer; transition:.2s; font-family:inherit; }
+  .options button:hover { transform:scale(1.05); background:#9be0c4; }
+  .feedback { font-size:20px; margin:15px 0; min-height:28px; color:#ff7aa2; }
+  .start-btn,.again-btn { padding:16px 30px; font-size:22px; border:none; border-radius:25px;
+    background:#ff9ec3; color:#fff; cursor:pointer; font-family:inherit; margin-top:15px; }
+  .progress { font-size:18px; color:#888; }
+  .sound-btn { background:#FFF5BA; border:none; border-radius:15px; padding:8px 14px;
+    font-size:18px; cursor:pointer; margin-top:10px; font-family:inherit; }
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .pop { display:inline-block; animation:pop .5s ease; }
+
+  /* Кладовка и тарелка */
+  .pantry { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin:20px 0; min-height:60px; }
+  .ingredient { font-size:44px; cursor:grab; user-select:none; transition:transform .15s;
+    padding:6px; border-radius:15px; }
+  .ingredient:active { cursor:grabbing; }
+  .ingredient.taken { opacity:.25; pointer-events:none; }
+  .plate { width:220px; height:220px; margin:20px auto; border-radius:50%;
+    background:radial-gradient(circle,#fff 60%,#eee 100%);
+    border:6px dashed #ffb3c9; display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
+    gap:4px; padding:10px; box-shadow:inset 0 4px 12px rgba(0,0,0,.08); transition:.2s; }
+  .plate.over { border-color:#ff7aa2; transform:scale(1.05); background:radial-gradient(circle,#fff5f8 60%,#ffe0ec 100%); }
+  .plate .ingredient { font-size:40px; cursor:default; animation:pop .4s ease; }
+  .hint-text { font-size:16px; color:#999; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="chef">👨‍🍳</div>
+  <h1>Сладкая мастерская</h1>
+  <div id="screen"></div>
+</div>
+
+<script>
+// ====== БАЗА ДАННЫХ ======
+const DATA = {
+  desserts: ["Радужный торт 🍰","Волшебное мороженое 🍦","Весёлый кекс 🧁","Фруктовый коктейль 🥤","Сладкие вафли 🧇"],
+  praise: ["Ура! Верно! Держи ингредиент!","Ты умница! Дзинь-дзинь!","Отлично! Как вкусно!","Правильно! Как красиво!","Вот это да! Ты волшебник!"],
+  hints: ["Почти! Попробуй ещё разок","Ты близко! Подумай ещё чуть-чуть","Не переживай, попробуем вместе"],
+  questions: [
+    {q:"Кто спит зимой в берлоге?",o:["Медведь","Заяц","Лиса"],c:"Медведь",i:"🍓"},
+    {q:"Кто даёт нам молоко?",o:["Корова","Курица","Рыбка"],c:"Корова",i:"🍫"},
+    {q:"Что растёт под землёй?",o:["Морковка","Яблоко","Груша"],c:"Морковка",i:"🥝"},
+    {q:"Кто говорит «Мяу»?",o:["Кошка","Собака","Утка"],c:"Кошка",i:"🍯"},
+    {q:"У кого иголки на спинке?",o:["Ёжик","Заяц","Волк"],c:"Ёжик",i:"🍒"},
+    {q:"Какого цвета солнышко?",o:["Жёлтое","Синее","Чёрное"],c:"Жёлтое",i:"🍦"},
+    {q:"Какого цвета трава?",o:["Зелёная","Красная","Белая"],c:"Зелёная",i:"🫐"},
+    {q:"Сколько лап у котика?",o:["4","2","6"],c:"4",i:"🥥"},
+    {q:"На что похоже колесо?",o:["Круг","Квадрат","Треугольник"],c:"Круг",i:"🧁"},
+    {q:"Сколько будет 1 плюс 1?",o:["2","3","1"],c:"2",i:"🍌"},
+    {q:"Что нужно сказать за подарок?",o:["Спасибо","Пока","Ничего"],c:"Спасибо",i:"🌈"},
+    {q:"Кто тянул репку первым?",o:["Дедка","Мышка","Внучка"],c:"Дедка",i:"🍓"},
+    {q:"Что кислое?",o:["Лимон","Конфета","Мёд"],c:"Лимон",i:"🍫"},
+    {q:"Что холодное?",o:["Мороженое","Чай","Суп"],c:"Мороженое",i:"🥝"},
+    {q:"Где растут яблоки?",o:["На дереве","В море","Под землёй"],c:"На дереве",i:"🍎"},
+    {q:"У кого длинная шея?",o:["Жираф","Кот","Ёжик"],c:"Жираф",i:"🍯"},
+    {q:"Кто царь зверей?",o:["Лев","Заяц","Мышь"],c:"Лев",i:"🍒"},
+    {q:"Какая птица не летает?",o:["Пингвин","Воробей","Ласточка"],c:"Пингвин",i:"🫐"},
+    {q:"Кто превращается из гусеницы?",o:["Бабочка","Пчела","Муха"],c:"Бабочка",i:"🌈"},
+    {q:"Сколько дней в неделе?",o:["7","5","10"],c:"7",i:"🧁"},
+    {q:"Какая фигура у крыши домика?",o:["Треугольник","Круг","Овал"],c:"Треугольник",i:"🍦"},
+    {q:"Сколько пальцев на руке?",o:["5","4","6"],c:"5",i:"🥭"},
+    {q:"Кто помогал Золушке?",o:["Фея","Дракон","Робот"],c:"Фея",i:"🍑"},
+    {q:"Как мычит корова?",o:["Му","Гав","Кря"],c:"Му",i:"🥤"},
+    {q:"С какой буквы слово Арбуз?",o:["А","Б","О"],c:"А",i:"🍓"},
+    {q:"Какая планета наш дом?",o:["Земля","Марс","Луна"],c:"Земля",i:"🍫"},
+    {q:"Какое насекомое делает мёд?",o:["Пчела","Муравей","Комар"],c:"Пчела",i:"🍯"},
+    {q:"Сколько ног у паука?",o:["8","6","4"],c:"8",i:"🥝"},
+    {q:"Сколько будет 3 плюс 2?",o:["5","4","6"],c:"5",i:"🍒"},
+    {q:"Из чего состоит радуга?",o:["Из цветов","Из воды","Из облаков"],c:"Из цветов",i:"🌈"},
+    {q:"Чем мы слышим?",o:["Ушами","Глазами","Руками"],c:"Ушами",i:"🫐"},
+    {q:"Какое время года тёплое?",o:["Лето","Зима","Осень"],c:"Лето",i:"🥥"}
+  ]
+};
+
+// ====== ОЗВУЧКА: два «детских» голоса поочерёдно ======
+let voiceTurn = 0; // 0 = девочка, 1 = мальчик
+let voices = [];
+function loadVoices(){ voices = window.speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ru')); }
+if('speechSynthesis' in window){ loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ru-RU';
+  if(voiceTurn === 0){ u.pitch = 1.8; u.rate = 0.95; if(voices[1]) u.voice = voices[1]; } // «девочка» — тоньше
+  else { u.pitch = 1.4; u.rate = 0.9; if(voices[0]) u.voice = voices[0]; }                // «мальчик» — чуть ниже
+  window.speechSynthesis.speak(u);
+  voiceTurn = 1 - voiceTurn; // меняем голос на следующий раз
+}
+
+// ====== ЗВУКИ ======
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function playTone(f,d,t='sine'){ const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=t; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.2,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d);
+  o.start(); o.stop(audioCtx.currentTime+d); }
+function soundCorrect(){ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); }
+function soundWrong(){ playTone(200,0.3,'triangle'); }
+function soundWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180)); }
+
+// ====== ЛОГИКА ======
+let questions=[], step=0, earned=[], dessertName="", placed=[];
+const TOTAL=6;
+const screen=document.getElementById('screen');
+const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+function startGame(){
+  audioCtx.resume();
+  questions=shuffle(DATA.questions).slice(0,TOTAL);
+  step=0; earned=[]; placed=[]; voiceTurn=0;
+  dessertName=pick(DATA.desserts);
+  showQuestion();
+}
+
+function showQuestion(){
+  const item=questions[step];
+  const opts=shuffle(item.o).map(o=>`<button onclick="answer('${o.replace(/'/g,"")}')">${o}</button>`).join('');
+  screen.innerHTML=`
+    <div class="progress">Собираем: ${dessertName} — вопрос ${step+1} из ${TOTAL}</div>
+    <div class="pantry">🧺 Твои ингредиенты: ${earned.join(' ')||'пока пусто'}</div>
+    <div class="question">${item.q}</div>
+    <div class="options">${opts}</div>
+    <button class="sound-btn" onclick="speak('${item.q}')">🔊 Повторить</button>
+    <div class="feedback" id="fb"></div>`;
+  speak(item.q);
+}
+
+function answer(chosen){
+  const item=questions[step], fb=document.getElementById('fb');
+  if(chosen===item.c){
+    earned.push(item.i); soundCorrect();
+    const p=pick(DATA.praise); fb.innerHTML=`<span class="pop">${p} ${item.i}</span>`; speak(p);
+    step++;
+    setTimeout(()=>{ step<TOTAL?showQuestion():showKitchen(); },1600);
+  } else { soundWrong(); const h=pick(DATA.hints); fb.textContent=h; speak(h); }
+}
+
+// ====== КУХНЯ: собери десерт руками ======
+function showKitchen(){
+  const pantryHtml=earned.map((emo,idx)=>
+    `<span class="ingredient" draggable="true" data-idx="${idx}" data-emo="${emo}"
+       ondragstart="dragStart(event)">${emo}</span>`).join('');
+  screen.innerHTML=`
+    <div class="progress">🎉 Ты заработал все ингредиенты!</div>
+    <h1>Собери свой десерт сам!</h1>
+    <div class="hint-text">Перетащи или нажми на ингредиент, чтобы положить его на тарелку 👇</div>
+    <div class="pantry" id="pantry">${pantryHtml}</div>
+    <div class="plate" id="plate" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropIt(event)"></div>
+    <div class="feedback" id="fb"></div>
+    <button class="again-btn" onclick="finishDessert()">Готово! 🍰</button>`;
+  // на телефоне drag неудобен — добавим клик
+  document.querySelectorAll('#pantry .ingredient').forEach(el=>{
+    el.addEventListener('click',()=>placeIngredient(el));
+  });
+  speak("Ура! Ты заработал все ингредиенты! Теперь собери свой десерт сам. Перетащи их на тарелку!");
+}
+
+let dragEmo=null, dragIdx=null;
+function dragStart(e){ dragEmo=e.target.dataset.emo; dragIdx=e.target.dataset.idx; }
+function dragOver(e){ e.preventDefault(); document.getElementById('plate').classList.add('over'); }
+function dragLeave(e){ document.getElementById('plate').classList.remove('over'); }
+function dropIt(e){
+  e.preventDefault(); document.getElementById('plate').classList.remove('over');
+  const el=document.querySelector(`#pantry .ingredient[data-idx="${dragIdx}"]`);
+  if(el && !el.classList.contains('taken')) placeIngredient(el);
+}
+function placeIngredient(el){
+  if(el.classList.contains('taken')) return;
+  const emo=el.dataset.emo;
+  placed.push(emo); el.classList.add('taken');
+  const span=document.createElement('span'); span.className='ingredient'; span.textContent=emo;
+  document.getElementById('plate').appendChild(span);
+  soundCorrect();
+  speak("Вкусно!");
+}
+
+function finishDessert(){
+  if(placed.length===0){ speak("Положи ингредиенты на тарелку!"); document.getElementById('fb').textContent="Сначала положи что-нибудь на тарелку 🙂"; return; }
+  soundWin();
+  screen.innerHTML=`
+    <div class="progress">Твой десерт готов! 🎉</div>
+    <div class="plate pop" style="cursor:default">${placed.map(e=>`<span class="ingredient">${e}</span>`).join('')}</div>
+    <h1>${dessertName}</h1>
+    <div class="question">Ты сам собрал десерт! Настоящий кондитер! 👏</div>
+    <button class="again-btn" onclick="startGame()">Приготовить ещё! 🍰</button>`;
+  speak(`Ура! Ты сам собрал ${dessertName.replace(/[^\wа-яё ]/gi,'')}! Настоящий маленький кондитер!`);
+}
+
+// ====== СТАРТ ======
+screen.innerHTML=`
+  <div class="question">Привет, маленький кондитер!<br>Отвечай на вопросы и собери свой десерт сам! 🍓</div>
+  <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>`;
+</script>
+</body>
+</html>
+🆕 Что изменилось:
+🎙️ Голоса (пожелание №1)
+Теперь два голоса чередуются: один тоньше 👧 (условно девочка), другой чуть ниже 👦 (мальчик)
+Каждая новая фраза озвучивается другим голосом — по очереди
+⚠️ Это имитация детских голосов настройками. Настоящий детский голос = только записи реальных детей
+🖐️ Сборка десерта руками (пожелание №2) — сделано полностью!
+За правильные ответы ингредиенты копятся в 🧺 кладовке
+В конце открывается кухня с тарелкой 🍽️
+Ребёнок сам перетаскивает (или нажимает) ингредиенты на тарелку
+Работает и мышкой (перетаскивание), и пальцем/кликом (для планшета)
+Кнопка «Готово!» показывает финальный десерт, собранный руками ребёнка ✨
+❓ Вопрос по голосам
+Хочешь, чтобы игру озвучивали настоящие дети? Тогда:
+
+🎤 Запиши мальчика и девочку, читающих фразы (похвалы, вопросы)
+Пришли, как это сделать — и я покажу, как вставить настоящие аудиозаписи вместо голоса браузера
+Так игра станет по-настоящему живой и тёплой! 🥰
+
+Всё получилось, как ты хотел? Или что-то ещё доработать? 🙂
+
+07.07.2026 23:21
+
+
+Игра не запускается
+
+
+07.07.2026 23:22
+["Корова","Курица","Рыбка"],c:"Корова",i:"🍫"},
+{q:"Что растёт под землёй?",o:["Морковка","Яблоко","Груша"],c:"Морковка",i:"🥝"},
+{q:"Кто говорит «Мяу»?",o:["Кошка","Собака","Утка"],c:"Кошка",i:"🍯"},
+{q:"У кого иголки на спинке?",o:["Ёжик","Заяц","Волк"],c:"Ёжик",i:"🍒"},
+{q:"Какого цвета солнышко?",o:["Жёлтое","Синее","Чёрное"],c:"Жёлтое",i:"🍦"},
+{q:"Какого цвета трава?",o:["Зелёная","Красная","Белая"],c:"Зелёная",i:"🫐"},
+{q:"Сколько лап у котика?",o:["4","2","6"],c:"4",i:"🥥"},
+{q:"На что похоже колесо?",o:["Круг","Квадрат","Треугольник"],c:"Круг",i:"🧁"},
+{q:"Сколько будет 1 плюс 1?",o:["2","3","1"],c:"2",i:"🍌"},
+{q:"Что нужно сказать за подарок?",o:["Спасибо","Пока","Ничего"],c:"Спасибо",i:"🌈"},
+{q:"Кто тянул репку первым?",o:["Дедка","Мышка","Внучка"],c:"Дедка",i:"🍓"},
+{q:"Что кислое?",o:["Лимон","Конфета","Мёд"],c:"Лимон",i:"🍫"},
+{q:"Что холодное?",o:["Мороженое","Чай","Суп"],c:"Мороженое",i:"🥝"},
+{q:"Где растут яблоки?",o:["На дереве","В море","Под землёй"],c:"На дереве",i:"🍎"},
+{q:"У кого длинная шея?",o:["Жираф","Кот","Ёжик"],c:"Жираф",i:"🍯"},
+{q:"Кто царь зверей?",o:["Лев","Заяц","Мышь"],c:"Лев",i:"🍒"},
+{q:"Какая птица не летает?",o:["Пингвин","Воробей","Ласточка"],c:"Пингвин",i:"🫐"},
+{q:"Кто превращается из гусеницы?",o:["Бабочка","Пчела","Муха"],c:"Бабочка",i:"🌈"},
+{q:"Сколько дней в неделе?",o:["7","5","10"],c:"7",i:"🧁"},
+{q:"Какая фигура у крыши домика?",o:["Треугольник","Круг","Овал"],c:"Треугольник",i:"🍦"},
+{q:"Сколько пальцев на руке?",o:["5","4","6"],c:"5",i:"🥭"},
+{q:"Кто помогал Золушке?",o:["Фея","Дракон","Робот"],c:"Фея",i:"🍑"},
+{q:"Как мычит корова?",o:["Му","Гав","Кря"],c:"Му",i:"🥤"},
+{q:"С какой буквы слово Арбуз?",o:["А","Б","О"],c:"А",i:"🍓"},
+{q:"Какая планета наш дом?",o:["Земля","Марс","Луна"],c:"Земля",i:"🍫"},
+{q:"Какое насекомое делает мёд?",o:["Пчела","Муравей","Комар"],c:"Пчела",i:"🍯"},
+{q:"Сколько ног у паука?",o:["8","6","4"],c:"8",i:"🥝"},
+{q:"Сколько будет 3 плюс 2?",o:["5","4","6"],c:"5",i:"🍒"},
+{q:"Из чего состоит радуга?",o:["Из цветов","Из воды","Из облаков"],c:"Из цветов",i:"🌈"},
+{q:"Чем мы слышим?",o:["Ушами","Глазами","Руками"],c:"Ушами",i:"🫐"},
+{q:"Какое время года тёплое?",o:["Лето","Зима","Осень"],c:"Лето",i:"🥥"}
+]
+};
+
+// ====== ОЗВУЧКА (безопасно) ======
+let voiceTurn = 0, voices = [];
+function loadVoices(){ try{ voices = window.speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ru')); }catch(e){} }
+if('speechSynthesis' in window){ loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+function speak(text){
+try{
+if(!('speechSynthesis' in window)) return;
+window.speechSynthesis.cancel();
+const u = new SpeechSynthesisUtterance(text);
+u.lang = 'ru-RU';
+if(voiceTurn === 0){ u.pitch = 1.8; u.rate = 0.95; if(voices[1]) u.voice = voices[1]; }
+else { u.pitch = 1.4; u.rate = 0.9; if(voices[0]) u.voice = voices[0]; }
+window.speechSynthesis.speak(u);
+voiceTurn = 1 - voiceTurn;
+}catch(e){}
+}
+
+// ====== ЗВУКИ (создаём ТОЛЬКО при старте!) ======
+let audioCtx = null;
+function initAudio(){ try{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function playTone(f,d,t='sine'){
+try{
+if(!audioCtx) return;
+const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+o.type=t; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
+g.gain.setValueAtTime(0.2,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d);
+o.start(); o.stop(audioCtx.currentTime+d);
+}catch(e){}
+}
+function soundCorrect(){ playTone(880,0.15); setTimeout(()=>playTone(1320,0.25),120); }
+function soundWrong(){ playTone(200,0.3,'triangle'); }
+function soundWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.3),i*180)); }
+
+// ====== ЛОГИКА ======
+let questions=[], step=0, earned=[], dessertName="", placed=[];
+const TOTAL=6;
+const screen=document.getElementById('screen');
+const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+function startGame(){
+initAudio(); // ← звук включаем здесь, после нажатия
+questions=shuffle(DATA.questions).slice(0,TOTAL);
+step=0; earned=[]; placed=[]; voiceTurn=0;
+dessertName=pick(DATA.desserts);
+showQuestion();
+}
+
+function showQuestion(){
+const item=questions[step];
+const opts=shuffle(item.o).map(o=><button onclick="answer('${o.replace(/'/g,"")}')">${o}</button>).join('');
+screen.innerHTML=     <div class="progress">Собираем: ${dessertName} — вопрос ${step+1} из ${TOTAL}</div>     <div class="pantry">🧺 ${earned.join(' ')||'пока пусто'}</div>     <div class="question">${item.q}</div>     <div class="options">${opts}</div>     <button class="sound-btn" onclick="speak('${item.q}')">🔊 Повторить</button>     <div class="feedback" id="fb"></div>;
+speak(item.q);
+}
+
+function answer(chosen){
+const item=questions[step], fb=document.getElementById('fb');
+if(chosen===item.c){
+earned.push(item.i); soundCorrect();
+const p=pick(DATA.praise); fb.innerHTML=<span class="pop">${p} ${item.i}</span>; speak(p);
+step++;
+setTimeout(()=>{ step<TOTAL?showQuestion():showKitchen(); },1600);
+} else { soundWrong(); const h=pick(DATA.hints); fb.textContent=h; speak(h); }
+}
+
+function showKitchen(){
+const pantryHtml=earned.map((emo,idx)=>
+<span class="ingredient" draggable="true" data-idx="${idx}" data-emo="${emo}" ondragstart="dragStart(event)">${emo}</span>).join('');
+screen.innerHTML=     <div class="progress">🎉 Ты заработал все ингредиенты!</div>     <h1>Собери свой десерт сам!</h1>     <div class="hint-text">Нажми или перетащи ингредиент на тарелку 👇</div>     <div class="pantry" id="pantry">${pantryHtml}</div>     <div class="plate" id="plate" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropIt(event)"></div>     <div class="feedback" id="fb"></div>     <button class="again-btn" onclick="finishDessert()">Готово! 🍰</button>;
+document.querySelectorAll('#pantry .ingredient').forEach(el=>el.addEventListener('click',()=>placeIngredient(el)));
+speak("Ура! Теперь собери свой десерт сам! Перетащи ингредиенты на тарелку!");
+}
+
+let dragIdx=null;
+function dragStart(e){ dragIdx=e.target.dataset.idx; }
+function dragOver(e){ e.preventDefault(); document.getElementById('plate').classList.add('over'); }
+function dragLeave(e){ document.getElementById('plate').classList.remove('over'); }
+function dropIt(e){ e.preventDefault(); document.getElementById('plate').classList.remove('over');
+const el=document.querySelector(#pantry .ingredient[data-idx="${dragIdx}"]); if(el&&!el.classList.contains('taken')) placeIngredient(el); }
+function placeIngredient(el){
+if(el.classList.contains('taken')) return;
+const emo=el.dataset.emo; placed.push(emo); el.classList.add('taken');
+const span=document.createElement('span'); span.className='ingredient'; span.textContent=emo;
+document.getElementById('plate').appendChild(span);
+soundCorrect(); speak("Вкусно!");
+}
+
+function finishDessert(){
+if(placed.length===0){ speak("Положи ингредиенты на тарелку!"); document.getElementById('fb').textContent="Сначала положи что-нибудь на тарелку 🙂"; return; }
+soundWin();
+screen.innerHTML=     <div class="progress">Твой десерт готов! 🎉</div>     <div class="plate pop" style="cursor:default">${placed.map(e=><span class="ingredient">${e}</span>).join('')}</div>     <h1>${dessertName}</h1>     <div class="question">Ты сам собрал десерт! Настоящий кондитер! 👏</div>     <button class="again-btn" onclick="startGame()">Приготовить ещё! 🍰</button>;
+speak("Ура! Ты сам собрал десерт! Настоящий маленький кондитер!");
+}
+
+// ====== СТАРТ ======
+screen.innerHTML=   <div class="question">Привет, маленький кондитер!<br>Отвечай на вопросы и собери свой десерт сам! 🍓</div>   <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>;
+</script>
+</body>
+</html>
+
+
+
+## 🔧 Что я исправил:
+
+| Проблема | Решение |
+|---|---|
+| ⚠️ `AudioContext` создавался сразу → скрипт падал | Теперь звук создаётся **только при нажатии** «Начать» |
+| ⚠️ Ошибки озвучки могли ломать игру | Обернул всё в `try{}catch{}` — ошибки больше не остановят игру |
+
+## 📌 Как обновить на GitHub:
+1. Открой свой репозиторий → файл **`index.html`**
+2. Нажми ✏️ (карандаш — редактировать)
+3. **Удали всё** старое содержимое, вставь новый код
+4. Нажми зелёную кнопку **Commit changes**
+5. Подожди 1–2 минуты и обнови страницу (**Ctrl + F5**)
+
+---
+
+Если после этого **всё равно** не заработает — сделай, пожалуйста, так:
+1. Нажми клавишу **F12** (откроется панель разработчика)
+2. Перейди на вкладку **Console** (Консоль)
+3. Пришли мне **скриншот красных ошибок** оттуда
+
+Тогда я точно найду причину! 🙂 Но с этим исправлением игра должна запуститься.
+07.07.2026 23:22
+
+Напиши полностью код - одним файлом
+
+
+07.07.2026 23:26
+Держи! 🎉 Полный код игры одним файлом. Просто сохрани как index.html и всё готово.
+
+html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍰 Сладкая мастерская</title>
+<style>
   body { margin:0; font-family:'Comic Sans MS','Segoe UI',sans-serif;
     background:linear-gradient(135deg,#FFD1DC,#B5EAD7,#FFF5BA);
     display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
@@ -158,3 +869,49 @@ function answer(chosen){
 
 function showKitchen(){
   const pantryHtml=earned.map((emo,idx)=>
+    `<span class="ingredient" draggable="true" data-idx="${idx}" data-emo="${emo}" ondragstart="dragStart(event)">${emo}</span>`).join('');
+  screen.innerHTML=`
+    <div class="progress">🎉 Ты заработал все ингредиенты!</div>
+    <h1>Собери свой десерт сам!</h1>
+    <div class="hint-text">Нажми или перетащи ингредиент на тарелку 👇</div>
+    <div class="pantry" id="pantry">${pantryHtml}</div>
+    <div class="plate" id="plate" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropIt(event)"></div>
+    <div class="feedback" id="fb"></div>
+    <button class="again-btn" onclick="finishDessert()">Готово! 🍰</button>`;
+  document.querySelectorAll('#pantry .ingredient').forEach(el=>el.addEventListener('click',()=>placeIngredient(el)));
+  speak("Ура! Теперь собери свой десерт сам! Перетащи ингредиенты на тарелку!");
+}
+
+let dragIdx=null;
+function dragStart(e){ dragIdx=e.target.dataset.idx; }
+function dragOver(e){ e.preventDefault(); document.getElementById('plate').classList.add('over'); }
+function dragLeave(e){ document.getElementById('plate').classList.remove('over'); }
+function dropIt(e){ e.preventDefault(); document.getElementById('plate').classList.remove('over');
+  const el=document.querySelector(`#pantry .ingredient[data-idx="${dragIdx}"]`); if(el&&!el.classList.contains('taken')) placeIngredient(el); }
+function placeIngredient(el){
+  if(el.classList.contains('taken')) return;
+  const emo=el.dataset.emo; placed.push(emo); el.classList.add('taken');
+  const span=document.createElement('span'); span.className='ingredient'; span.textContent=emo;
+  document.getElementById('plate').appendChild(span);
+  soundCorrect(); speak("Вкусно!");
+}
+
+function finishDessert(){
+  if(placed.length===0){ speak("Положи ингредиенты на тарелку!"); document.getElementById('fb').textContent="Сначала положи что-нибудь на тарелку 🙂"; return; }
+  soundWin();
+  screen.innerHTML=`
+    <div class="progress">Твой десерт готов! 🎉</div>
+    <div class="plate pop" style="cursor:default">${placed.map(e=>`<span class="ingredient">${e}</span>`).join('')}</div>
+    <h1>${dessertName}</h1>
+    <div class="question">Ты сам собрал десерт! Настоящий кондитер! 👏</div>
+    <button class="again-btn" onclick="startGame()">Приготовить ещё! 🍰</button>`;
+  speak("Ура! Ты сам собрал десерт! Настоящий маленький кондитер!");
+}
+
+// ====== СТАРТ ======
+screen.innerHTML=`
+  <div class="question">Привет, маленький кондитер!<br>Отвечай на вопросы и собери свой десерт сам! 🍓</div>
+  <button class="start-btn" onclick="startGame()">Начать игру! ▶️</button>`;
+</script>
+</body>
+</html>
